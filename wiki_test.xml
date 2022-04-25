@@ -1,0 +1,63 @@
+<xml>
+<page>
+<title>
+CS200
+</title>
+<id>
+0
+</id>
+<text>
+Students extend their program-design skills while learning multiple data 
+structures, common graph algorithms, different forms of societal impacts from 
+programs, how to analyze programs for performance, and how to work effectively 
+with multiple styles of programming languages. Examples and course projects 
+draw from several areas of computer science to help students identify their 
+broader interests within the field. There will be a required weekly lab session
+ involving hands-on work with course material.
+Prerequisite: CSCI 0112, CSCI 0150, 0170, or CSCI 0190. In addition, CSCI 0111 
+can be used with both additional work and the instructor's permission. The 
+first two weeks of the course will be taught as at least two parallel tracks 
+based on which prerequisite course a student has taken.
+CSCI 0200 will be offered every semester (fall and spring).
+</text>
+</page>
+
+<page>
+<title>
+CS320
+</title>
+<id>
+1
+</id>
+<text>
+Techniques for designing, building, and maintaining large,scalable, and reusable
+ systems. We will cover advanced programming techniques using Java and 
+ Javascript. Course assignments will familiarize students with software testing,
+  relational databases, concurrency techniques such as threads, and software 
+  engineering tools like git, profilers, and debuggers. A major component of the
+   course will be a group software project of your own design.
+
+Prerequisite: CSCI 0160, CSCI 0180, CSCI 0190, or CSCI 0200; CSCI 0220 is 
+recommended.
+</text>
+</page>
+
+<page>
+<title>
+CS330
+</title>
+<id>
+1
+</id>
+<text>
+High-level computer architecture and systems programming. The course covers the 
+organization of computer systems (in terms of storage units, caches, processors,
+ and I/O controllers) and teaches students assembly-language programming and 
+ C-language programming. Extensive programming exercises introduce students to 
+ systems-level programming on Unix systems, as well as to multi-threaded 
+ programming with POSIX threads. Students will be introduced to the functions of
+  operating systems. Prerequisite: CSCI 0160, 0180, 0190, or 0200.
+</text>
+</page>
+
+</xml>
