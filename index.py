@@ -92,6 +92,43 @@ class Indexer:
     
     
 
+def pageRanker(pages):
+    EPS = 0.15
+    n = len(pages)
+    rankingPrev = [0] * n
+    rankingCurr = [1/n] * n
+    while distance(rankingPrev, rankingCurr) > EPS:
+        rankingCurr = rankingPrev
+        for j in pages:
+            rankingCurr[j] = 0
+            for k in pages:
+                rankingCurr[j] = rankingCurr[j] + weightPage(j, k) * rankingPrev[k]
+    pass
+
+def weightPage(k, j, pages):
+    weight = 0
+    EPS = 0.15
+    nk = pagesContaining(pages)
+    if doesLink(k, j):
+        weight = (EPS / len(pages)) + (1 - EPS)(1/nk)
+    else: 
+        weight = (EPS / len(pages))
+    return weight
+        
+
+def doesLink(k, j) -> Boolean:
+    pass
+
+def pagesContaining(pages):
+    nk = 0
+    for page in pages:
+        if False == True:
+            nk += 1
+    return nk
+
+
+
+
 
 
 
