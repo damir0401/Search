@@ -1,3 +1,4 @@
+import math
 from os import nice
 from socket import ntohl
 import sys
@@ -181,43 +182,51 @@ class Indexer:
 
 
 
-# def pageRanker(pages):
-#     EPS = 0.15
-#     n = len(pages)
-#     rankingPrev = [0] * n
-#     rankingCurr = [1/n] * n
-#     while distance(rankingPrev, rankingCurr) > EPS:
-#         rankingCurr = rankingPrev
-#         for j in pages:
-#             rankingCurr[j] = 0
-#             for k in pages:
-#                 rankingCurr[j] = rankingCurr[j] + weightPage(j, k) * rankingPrev[k]
-#     pass
+def pageRanker(page_dict):
+    pages = list (page_dict.keys())
+    EPS = 0.15
+    n = len(pages)
+    rankingPrev = [0] * n
+    rankingCurr = [1/n] * n
+    while eDistance(rankingPrev, rankingCurr) > EPS:
+        rankingCurr = rankingPrev
+        for j in len(pages):
+            rankingCurr[j] = 0
+            for k in pages:
+                rankingCurr[j] = rankingCurr[j] + weightPage(j, k) * rankingPrev[k]
 
-# def weightPage(k, j, pages):
-#     weight = 0
-#     EPS = 0.15
-#     nk = pagesContaining(pages)
-#     if doesLink(k, j):
-#         weight = (EPS / len(pages)) + (1 - EPS)(1/nk)
-#     else: 
-#         weight = (EPS / len(pages))
-#     return weight
+def eDistance(rp, rc):
+    termSquares = [0] * len(rp)
+    for i in range(len(rp)):
+        termSquares.append((rc[i] - rp[i])^2)
+    return math.sqrt(sum(termSquares))
+    
+
+def weightPage(k, j, pages):
+    weight = 0
+    EPS = 0.15
+    nk = pagesContaining(pages)
+    if doesLink(k, j):
+        weight = (EPS / len(pages)) + (1 - EPS)(1/nk)
+    else: 
+        weight = (EPS / len(pages))
+    return weight
         
 
-# def doesLink(k, j) -> Boolean:
-#     pass
+def doesLink(k, j, id_l_dict) -> bool:
+    dl = False
+    for id in id_l_dict[k]:
+        if id == j:
+            dl = True
+    return dl
+    pass
 
-def pagesContaining(pages):
+def pagesContaining(pages, j):
     nk = 0
     for page in pages:
-        if False == True:
+        if doesLink(page, j):
             nk += 1
     return nk
-
-
-
-
 
 
 
