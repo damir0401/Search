@@ -55,38 +55,62 @@ class Indexer:
         self.words = file_io.write_words_file(words, self.word_to_id_to_rel_dict)
 
     def id_to_title(self, page):
-        self.id_to_title_dict[int(page.find('id').text)] = page.find('title').text.strip()
+        self.id_to_title_dict[int(page.find('id').text.strip())] = page.find('title').text.strip()
 
     def title_to_id(self, page):
-        self.title_to_id_dict[page.find('title').text.strip()] = int(page.find('id').text)
+        self.title_to_id_dict[page.find('title').text.strip()] = int(page.find('id').text.strip())
 
     def id_to_links(self):
         for id in self.id_to_title_dict.keys():
             self.id_to_links_dict[id] = set([])
 
     def item_remove(self,i,new_list):
-        l = []
+        l = set([])
         for item in new_list:
             if item != i:
-                l.append(item)
+                l.add(item)
         return l
+
+    def filter_helper(self,title):
+        return title in self.title_to_id_dict.keys()
 
     def id_to_links_processing(self):
         for id in self.id_to_title_dict.keys():
+            #filter(self.filter_helper,self.id_to_links_dict[id])
+            #print('filter')
+            #print(filter(self.filter_helper,self.id_to_links_dict[id]))
+            #self.id_to_links_dict[id] = set(filter(self.filter_helper,self.id_to_links_dict[id]))
+            for title in self.id_to_links_dict[id]:
+                self.id_to_links_dict[id] = set(filter(self.filter_helper,self.id_to_links_dict[id]))
+                # if title not in self.title_to_id_dict.keys():
+                #     self.id_to_links_dict[id] = self.item_remove(id,title)
+                    #self.id_to_links_dict[id].remove(title)
+
             if len(self.id_to_links_dict[id]) == 0 or (len(self.id_to_links_dict[id]) == 1 and self.id_to_title_dict[id] in self.id_to_links_dict[id]):
                 self.id_to_links_dict[id] = self.item_remove(self.id_to_title_dict[id],list(self.title_to_id_dict.keys()))
             elif len(self.id_to_title_dict[id]) != 0 and self.id_to_title_dict[id] in self.id_to_links_dict[id]:
                 l = self.id_to_links_dict[id]
                 self.id_to_links_dict[id] = self.item_remove(id,l)
 
+
+    # def stem_and_stop(self, word):
+
+    #     if word.lower() in STOP_WORDS:
+    #         return ""
+    #     return nltk_test.stem(word.lower())
+
     def tokenization(self, text, id):
         n_regex = r"\[\[[^\[]+?\]\]|[a-zA-Z0-9]+'[a-zA-Z0-9]+|[a-zA-Z0-9]+"
         page_tokens = re.findall(n_regex, text)
 
         # removing stop words and stem
+
+
+        # new_tokens = [self.stem_and_stop(x) for x in page_tokens]
+        
         for words in page_tokens:
             if re.match(r"\[\[[^\[]+?\]\]", words):
-                new_word = words[2:-2]
+                new_word = words[2:-2].strip()
                 if ':' in new_word:
                     self.id_to_links_dict[id].add(new_word)
                     processed_word = new_word.replace(':',' ').split(' ')
@@ -162,21 +186,27 @@ class Indexer:
 
     def word_to_id_rel(self):
         for word in self.word_to_id_frequency_dict.keys():
+            # if word != "" and word != " " and word != "\n":
+            # print("fdkfmdkffd")
             self.word_to_id_to_rel_dict[word] = self.word_to_id_rel_helper(word)
     
 
     def parsing(self):
         root = et.parse(self.xml).getroot()
+        #page = root.findall("page")
         for page in root.findall("page"):
             # populating self.id_to_title_dict
             self.id_to_title(page)
             self.title_to_id(page)
 
+            #print(f"progress {i}/ {len(page)}")
+
         self.id_to_links()
         for page in root.findall("page"):
             # tokenization
             title = page.find('title').text.strip()
-            text = page.find('text').text.strip()
+            text = page.find('text').text.strip() 
+            #id = int(float(page.find('id').text.strip()))
             id = int(page.find('id').text)
             self.tokenization(title + ' ' + text, id)
 
@@ -184,20 +214,22 @@ class Indexer:
         print(self.id_to_links_dict)
 
         self.id_to_links_processing()
-        print('word_to_id_frequency_dict')
-        print(self.word_to_id_frequency_dict)
+        # print('word_to_id_frequency_dict')
+        # print(self.word_to_id_frequency_dict)
         self.term_frequency_dict = self.word_to_id_frequency_dict.copy()
         self.term_frequency()
-        print('self.term_frequency_dict')
-        print(self.term_frequency_dict)
+        # print('self.term_frequency_dict')
+        # print(self.term_frequency_dict)
         self.inverse_doc_frequency()
-        print('word_to_inv_freq')
-        print(self.word_to_inv_freq)
+        # print('word_to_inv_freq')
+        # print(self.word_to_inv_freq)
         self.word_to_id_rel()
-        print('word_to_id_rel')
+        # print('word_to_id_rel')
+        # print(self.word_to_id_to_rel_dict)
+        # print('id_to_links_dict after')
+        # print(self.id_to_links_dict)
+        print('word to id to rel')
         print(self.word_to_id_to_rel_dict)
-        print('id_to_links_dict after')
-        print(self.id_to_links_dict)
     
     ###########
 
@@ -215,6 +247,9 @@ class Indexer:
                 self.id_to_page_ranks_dict[j] = 0
                 for k in self.id_to_title_dict.keys():
                     self.id_to_page_ranks_dict[j] = self.id_to_page_ranks_dict[j] + self.id_to_weights_dict[k,j] * rPrev[k]
+        print('id_to_page_ranks')
+        print(self.id_to_page_ranks_dict)
+
 
     def rDistance(self,rPrev,rCurr):
         sum = 0
