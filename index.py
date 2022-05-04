@@ -101,7 +101,7 @@ class Indexer:
 
     def tokenization(self, text, id):
         n_regex = r"\[\[[^\[]+?\]\]|[a-zA-Z0-9]+'[a-zA-Z0-9]+|[a-zA-Z0-9]+"
-        page_tokens = re.findall(n_regex, text)
+        page_tokens = re.findall(n_regex, text.strip())
 
         # removing stop words and stem
 
@@ -207,7 +207,7 @@ class Indexer:
             title = page.find('title').text.strip()
             text = page.find('text').text.strip() 
             #id = int(float(page.find('id').text.strip()))
-            id = int(page.find('id').text)
+            id = int(page.find('id').text.strip())
             self.tokenization(title + ' ' + text, id)
 
         print('id_to_links_dict before')

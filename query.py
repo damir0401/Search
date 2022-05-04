@@ -27,7 +27,7 @@ class Querier:
         print(self.id_to_page_ranks_dict)
         #print("seeing the word index", wordIndex)
         self.wordIndex = file_io.read_words_file(wordIndex, self.word_to_id_to_rel_dict)
-        print(self.wordIndex)
+        print(self.word_to_id_to_rel_dict)
 
         #exit()
         #self.query()
@@ -43,27 +43,60 @@ class Querier:
             self.handle_printing(self.ranking_rel())
   
 
+    # def stem_list(self,word_list):
+    #     new_list = []
+    #     for word in word_list:
+    #             if word not in STOP_WORDS:
+    #                 print('stop word' + word)
+    #                 new_list.append(stemmer.stem(word))
+    #     print('THE WORLD')
+    #     print(new_list)
+    #     return new_list
+
     def stem_list(self,word_list):
         new_list = []
         for word in word_list:
-                if not(word in STOP_WORDS):
-                    word_list.remove(word)
+            if word not in STOP_WORDS:
                 new_list.append(stemmer.stem(word))
+        self.id_to_rel(new_list)
+        #print('id_to_rel_dict')
+        #print(self.id_to_rel_dict)
         return new_list
 
     
     def scoring_rel(self,id,word_list):
         sum = 0
+        #print(self.pagerank)
         if self.pagerank:
             for word in word_list:
-                sum = sum + self.word_to_id_to_rel_dict[word][id] * self.id_to_page_ranks_dict[id]
+                if id in self.word_to_id_to_rel_dict[word].keys():
+                    sum = sum + self.word_to_id_to_rel_dict[word][id] * self.id_to_page_ranks_dict[id]
+                else:
+                    sum = sum
         else:
             for word in word_list:
-                sum = sum + self.word_to_id_to_rel_dict[word][id]
+                #print(1 in self.word_to_id_to_rel_dict[word].keys())
+                if id in self.word_to_id_to_rel_dict[word].keys():
+                    # print("OMG")
+                    # print(self.word_to_id_to_rel_dict[word][id])
+                    sum = sum + self.word_to_id_to_rel_dict[word][id]
+                else:
+                    sum = sum
+        return sum
+                    # print(sum)
+        # print('SCORING REL')
+        # print(sum)
 
     def id_to_rel(self,word_list):
+        
+        #print('id to title dict')
+        #print(self.id_to_title_dict)
         for id in self.id_to_title_dict:
+            # print("HALALELHA")
+            # print(self.scoring_rel(id,word_list))
             self.id_to_rel_dict[id] = self.scoring_rel(id,word_list)
+        #print("HALALELHA")
+        #print(self.id_to_rel_dict)
     
     def return_val(self,tuple):
         return tuple[1]
@@ -71,15 +104,19 @@ class Querier:
     def ranking_rel(self):
         #print(list(self.id_to_rel_dict.items()).sort(reverse=True, key=self.return_val))
         
-        # print('the dictionary in the method', self.id_to_rel_dict)
-        return list(self.id_to_rel_dict.items()).sort(reverse=True, key=self.return_val)
+        #print('the dictionary in the method', self.id_to_rel_dict)
+        print("My name is Giorvanni Gorgio")
+        print(list(self.id_to_rel_dict.items()))
+        print(sorted(list(self.id_to_rel_dict.items()),key=self.return_val,reverse=True))
+        return sorted(list(self.id_to_rel_dict.items()),key=self.return_val,reverse=True)
+        #return list(self.id_to_rel_dict.items()).sorted(reverse=True, key=self.return_val)
 
 
     def handle_printing(self, curr_list):
         print("Checking the element" , curr_list)
         num_element = min(10, len(curr_list))
         for i in range(num_element):
-            print("\t" + f"{i+1} " + self.id_to_title_dict[curr_list[i]])
+            print("\t" + f"{i+1}" + self.id_to_title_dict[curr_list[i][0]])
 
     
     ##### with pagerank
