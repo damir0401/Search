@@ -1,3 +1,5 @@
+from tokenize import Number
+from typing import List
 import file_io
 from turtle import distance
 from xmlrpc.client import Boolean
@@ -9,142 +11,180 @@ stemmer = PorterStemmer()
 
 
 class Querier:
+    '''
+    This is a class that contains code for quering
+    '''
 
     def __init__(self,pagerank,titleIndex,documentIndex,wordIndex):
+        '''
+        Initialization method for Indexer class.
+        '''
+        
+        # a boolean whether user wants to include pagerank
         self.pagerank = pagerank
+
+        # dict to map id to titles
         self.id_to_title_dict = {}
+
+        # dict to map id to page ranks
         self.id_to_page_ranks_dict = {}
+
+        # dict to map word to id to relevances
         self.word_to_id_to_rel_dict = {}
+
+        # dict to map id to relevances
         self.id_to_rel_dict = {}
 
-        #self.id_to_rel()
-
+        # reading files populated by Indexer
+        self.titleIndex = \
+            file_io.read_title_file(titleIndex, self.id_to_title_dict)
+        self.docs = \
+            file_io.read_docs_file(documentIndex, self.id_to_page_ranks_dict)
+        self.wordIndex = \
+            file_io.read_words_file(wordIndex, self.word_to_id_to_rel_dict)
     
+    def query(self) -> None:
+        '''
+        REPL. Prompts the user for input, then processes the input, 
+        prints the result and repeats
 
-        self.titleIndex = file_io.read_title_file(titleIndex, self.id_to_title_dict)
-        print(self.id_to_title_dict)
-        self.docs = file_io.read_docs_file(documentIndex, self.id_to_page_ranks_dict)
-        print(self.id_to_page_ranks_dict)
-        #print("seeing the word index", wordIndex)
-        self.wordIndex = file_io.read_words_file(wordIndex, self.word_to_id_to_rel_dict)
-        print(self.word_to_id_to_rel_dict)
+        Parameters: 
+        None
 
-        #exit()
-        #self.query()
-    
-    # pagerank: bool, titleIndex: dict, docIndex: dict, wordIndex: dict
-    def query(self):
+        Returns: 
+        None
+        '''
         while True:
+            self.id_to_rel_dict = {}
             phrase = input("search phrase:")
-            if phrase == "quit":
-                exit()  
+            if phrase == ":quit":
+                break 
             word_list = phrase.split(" ")
-            self.id_to_rel(self.stem_list(word_list))
+            new_word_list = self.stem_list(word_list)
+            self.id_to_rel(new_word_list)
             self.handle_printing(self.ranking_rel())
-  
 
-    # def stem_list(self,word_list):
-    #     new_list = []
-    #     for word in word_list:
-    #             if word not in STOP_WORDS:
-    #                 print('stop word' + word)
-    #                 new_list.append(stemmer.stem(word))
-    #     print('THE WORLD')
-    #     print(new_list)
-    #     return new_list
+    def stem_list(self,word_list) -> List:
+        '''
+        Stemming words of the input list of words
 
-    def stem_list(self,word_list):
+        Parameters: 
+        None
+
+        Returns: 
+        None
+        '''
         new_list = []
         for word in word_list:
             if word not in STOP_WORDS:
                 new_list.append(stemmer.stem(word))
-        self.id_to_rel(new_list)
-        #print('id_to_rel_dict')
-        #print(self.id_to_rel_dict)
         return new_list
 
     
-    def scoring_rel(self,id,word_list):
+    def scoring_rel(self,id,word_list) -> Number:
+        '''
+        Computes relevance scores based on if pagerank was used and 
+        word_to_id_to_rel_dict.
+
+        Parameters: 
+        id - id of a document
+        word_list - a list of input words
+
+        Returns: 
+        The relevance score for each word
+        '''
         sum = 0
-        #print(self.pagerank)
         if self.pagerank:
             for word in word_list:
-                if id in self.word_to_id_to_rel_dict[word].keys():
-                    sum = sum + self.word_to_id_to_rel_dict[word][id] * self.id_to_page_ranks_dict[id]
-                else:
-                    sum = sum
+                if word in self.word_to_id_to_rel_dict:
+                    if id in self.word_to_id_to_rel_dict[word].keys():
+                        sum = sum + self.word_to_id_to_rel_dict[word][id] \
+                            * self.id_to_page_ranks_dict[id]
+                    else:
+                        sum = sum
         else:
             for word in word_list:
-                #print(1 in self.word_to_id_to_rel_dict[word].keys())
-                if id in self.word_to_id_to_rel_dict[word].keys():
-                    # print("OMG")
-                    # print(self.word_to_id_to_rel_dict[word][id])
-                    sum = sum + self.word_to_id_to_rel_dict[word][id]
-                else:
-                    sum = sum
+                if word in self.word_to_id_to_rel_dict.keys():
+                    if id in self.word_to_id_to_rel_dict[word].keys():
+                        sum = sum + self.word_to_id_to_rel_dict[word][id]
+                    else:
+                        sum = sum
         return sum
-                    # print(sum)
-        # print('SCORING REL')
-        # print(sum)
 
-    def id_to_rel(self,word_list):
-        
-        #print('id to title dict')
-        #print(self.id_to_title_dict)
+    def id_to_rel(self,word_list) -> None:
+        '''
+        Populates id_to_rel dictionary after scoring relevance scores.
+        It also prints 'No results', if the input words are not in the corpus
+
+        Parameters: 
+        word_list - a list of input words
+
+        Returns: 
+        None
+        '''
         for id in self.id_to_title_dict:
-            # print("HALALELHA")
-            # print(self.scoring_rel(id,word_list))
-            self.id_to_rel_dict[id] = self.scoring_rel(id,word_list)
-        #print("HALALELHA")
-        #print(self.id_to_rel_dict)
+            rel = self.scoring_rel(id, word_list)
+            if rel != 0:
+                self.id_to_rel_dict[id] = rel
+        if len(self.id_to_rel_dict) == 0:
+            print("No results")
     
-    def return_val(self,tuple):
+    def return_val(self,tuple) -> Number:
+        '''
+        Returns the second value of a tuple of id and relevance scores
+
+        Parameters: 
+        tuple - tuple of id and relevance scores
+
+        Returns: 
+        Second value of a tuple
+        '''
         return tuple[1]
 
-    def ranking_rel(self):
-        #print(list(self.id_to_rel_dict.items()).sort(reverse=True, key=self.return_val))
-        
-        #print('the dictionary in the method', self.id_to_rel_dict)
-        print("My name is Giorvanni Gorgio")
-        print(list(self.id_to_rel_dict.items()))
-        print(sorted(list(self.id_to_rel_dict.items()),key=self.return_val,reverse=True))
-        return sorted(list(self.id_to_rel_dict.items()),key=self.return_val,reverse=True)
-        #return list(self.id_to_rel_dict.items()).sorted(reverse=True, key=self.return_val)
+    def ranking_rel(self) -> List:
+        '''
+        Returns sorted list of tuples of id and relevance scores in ascending
+        order
 
+        Parameters: 
+        tuple
 
-    def handle_printing(self, curr_list):
-        print("Checking the element" , curr_list)
+        Returns: 
+        sorted list of tuples of id and relevance scores in ascending order
+        '''
+        return sorted(list(self.id_to_rel_dict.items()), \
+            key=self.return_val,reverse=True)
+
+    def handle_printing(self, curr_list) -> None:
+        '''
+        Prints the top 10 results
+
+        Parameters: 
+        curr_list - a sorted list tuples of id and relevance scores in 
+        ascending order
+
+        Returns: 
+        None
+        '''
         num_element = min(10, len(curr_list))
         for i in range(num_element):
-            print("\t" + f"{i+1}" + self.id_to_title_dict[curr_list[i][0]])
+            print("\t" + f"{i+1}" + " " + \
+                self.id_to_title_dict[curr_list[i][0]])
 
     
-    ##### with pagerank
-
-    # def scoring_rel_pagerank(self,id,word_list):
-    #     sum = 0
-    #     for word in word_list:
-    #         sum = sum + self.word_to_id_to_rel_dict[word][id] + self.id_to_page_ranks_dict[id]
-
-    # def ranking_rel_pagerank(self):
-    #     return 
-
-
-
-    # def query(titleIndex: dict, docIndex: dict, wordIndex: dict):
-    #     while True:
-    #         phrase = input("search phrase:")
-    #         word_list = phrase.split(" ")
-    #         stemmer = PorterStemmer()
-    #         for word in word_list:
-    #             if not(word in STOP_WORDS):
-    #                 word_list.remove(word)
-    #             stemmer.stem(word)
-    #         if phrase == ":quit":
-    #             exit()
-
-
 if __name__ == "__main__":
+    '''
+        Main method of Querier class. If there are 5 arguments, then user
+        wants to include pagerank in computing the rank. Otherwise, there will
+        be 4 inputs. If user passes less or more than 3 or 4 input words,
+        prints out the informative message
+
+        Parameters:
+        None
+
+        Returns: 
+        None
+        '''
     if len(sys.argv) == 5:
         page_rank = sys.argv[1]
         title_index = sys.argv[2]
@@ -159,4 +199,3 @@ if __name__ == "__main__":
     else:
         print("Try passing in 3 or 4 arguments")
     q.query()
-    #Querier(title_index,document_index,word_index)

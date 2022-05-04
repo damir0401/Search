@@ -3,6 +3,10 @@ from os import nice
 from socket import ntohl
 import sys
 import re
+from tokenize import Number
+from typing import Set
+from xml.dom.minidom import Element
+from xmlrpc.client import Boolean
 import file_io
 import xml.etree.ElementTree as et
 from nltk.corpus import stopwords
@@ -11,9 +15,17 @@ from nltk.stem import PorterStemmer
 nltk_test = PorterStemmer()
 from math import log
 
+
 class Indexer:
-    
+    '''
+    This is a class that contains code for indexing the XML file
+    '''
+
     def __init__(self,xml,titles,docs,words):
+        '''
+        Initialization method for Indexer class.
+        '''
+        # xml
         self.xml = xml
 
         # dict to map id to titles
@@ -50,87 +62,145 @@ class Indexer:
         self.calculate_weight()
         self.pageRank()
 
+        # writing to files
         self.titles = file_io.write_title_file(titles, self.id_to_title_dict)
         self.docs = file_io.write_docs_file(docs, self.id_to_page_ranks_dict)
-        self.words = file_io.write_words_file(words, self.word_to_id_to_rel_dict)
+        self.words = \
+            file_io.write_words_file(words, self.word_to_id_to_rel_dict)
 
-    def id_to_title(self, page):
-        self.id_to_title_dict[int(page.find('id').text.strip())] = page.find('title').text.strip()
+    def id_to_title(self, page) -> None:
+        '''
+        Does not return anything. It populates the id_to_title_dict dictionary
 
-    def title_to_id(self, page):
-        self.title_to_id_dict[page.find('title').text.strip()] = int(page.find('id').text.strip())
+        Parameters: 
+        page - a single page in the XML file
 
-    def id_to_links(self):
+        Returns: 
+        None
+        '''
+        self.id_to_title_dict[int(float(page.find('id').text.strip()))] = \
+            page.find('title').text.strip()
+
+    def title_to_id(self, page) -> None:
+        '''
+        Does not return anything. It populates the title_to_id_dict dictionary
+
+        Parameters: 
+        page - a single page in the XML file
+
+        Returns: 
+        None
+        '''
+        self.title_to_id_dict[page.find('title').text.strip()] = \
+            int(float(page.find('id').text.strip()))
+
+    def id_to_links(self) -> None:
+        '''
+        Does not return anything. It populates the id_to_links_dict dictionary
+
+        Parameters: 
+        None
+
+        Returns: 
+        None
+        '''
         for id in self.id_to_title_dict.keys():
             self.id_to_links_dict[id] = set([])
 
-    def item_remove(self,i,new_list):
+    def item_remove(self,i,new_list) -> Set:
+        '''
+        It removes the item from the list and returns the list
+
+        Parameters: 
+        i - item to remove
+        new_list - a list
+
+        Returns: 
+        a set without given item
+        '''
         l = set([])
         for item in new_list:
             if item != i:
                 l.add(item)
         return l
 
-    def filter_helper(self,title):
+    def filter_helper(self,title) -> Boolean:
+        '''
+        Returns a boolean if the title in the keys of title_to_id_dict 
+        dictionary
+
+        Parameters: 
+        title - a string(title)
+
+        Returns: 
+        A boolean if the title in the keys of title_to_id_dict dictionary
+        '''
         return title in self.title_to_id_dict.keys()
 
-    def id_to_links_processing(self):
-        for id in self.id_to_title_dict.keys():
-            #filter(self.filter_helper,self.id_to_links_dict[id])
-            #print('filter')
-            #print(filter(self.filter_helper,self.id_to_links_dict[id]))
-            #self.id_to_links_dict[id] = set(filter(self.filter_helper,self.id_to_links_dict[id]))
-            for title in self.id_to_links_dict[id]:
-                self.id_to_links_dict[id] = set(filter(self.filter_helper,self.id_to_links_dict[id]))
-                # if title not in self.title_to_id_dict.keys():
-                #     self.id_to_links_dict[id] = self.item_remove(id,title)
-                    #self.id_to_links_dict[id].remove(title)
+    def id_to_links_processing(self) -> None:
+        '''
+        Processes the id_to_link_dict. For example, if the link does not have
+        links, the function populates it with all of the pages, except itself
 
-            if len(self.id_to_links_dict[id]) == 0 or (len(self.id_to_links_dict[id]) == 1 and self.id_to_title_dict[id] in self.id_to_links_dict[id]):
-                self.id_to_links_dict[id] = self.item_remove(self.id_to_title_dict[id],list(self.title_to_id_dict.keys()))
-            elif len(self.id_to_title_dict[id]) != 0 and self.id_to_title_dict[id] in self.id_to_links_dict[id]:
+        Parameters:
+        None
+
+        Returns: 
+        None
+        '''
+        for id in self.id_to_title_dict.keys():
+            for title in self.id_to_links_dict[id]:
+                self.id_to_links_dict[id] = \
+                    set(filter(self.filter_helper,self.id_to_links_dict[id]))
+            if len(self.id_to_links_dict[id]) == 0 or \
+                (len(self.id_to_links_dict[id]) == 1 \
+                    and self.id_to_title_dict[id] in self.id_to_links_dict[id]):
+                self.id_to_links_dict[id] = \
+                    self.item_remove(self.id_to_title_dict[id], \
+                    list(self.title_to_id_dict.keys()))
+            elif len(self.id_to_title_dict[id]) != 0 \
+                and self.id_to_title_dict[id] in self.id_to_links_dict[id]:
                 l = self.id_to_links_dict[id]
                 self.id_to_links_dict[id] = self.item_remove(id,l)
 
 
-    # def stem_and_stop(self, word):
+    def tokenization(self, text, id) -> None:
+        '''
+        Processing documents into essential terms(tokenizes the given text, and 
+        stems)
 
-    #     if word.lower() in STOP_WORDS:
-    #         return ""
-    #     return nltk_test.stem(word.lower())
+        Parameters:
+        text - id + text of documents
+        id - id of a document
 
-    def tokenization(self, text, id):
+        Returns: 
+        None
+        '''
         n_regex = r"\[\[[^\[]+?\]\]|[a-zA-Z0-9]+'[a-zA-Z0-9]+|[a-zA-Z0-9]+"
-        page_tokens = re.findall(n_regex, text.strip())
-
+        page_tokens = [x for x in re.findall(n_regex, text.strip()) \
+            if x != "" or x != "\n" or x !=" "]
         # removing stop words and stem
-
-
-        # new_tokens = [self.stem_and_stop(x) for x in page_tokens]
         
         for words in page_tokens:
             if re.match(r"\[\[[^\[]+?\]\]", words):
                 new_word = words[2:-2].strip()
-                if ':' in new_word:
-                    self.id_to_links_dict[id].add(new_word)
-                    processed_word = new_word.replace(':',' ').split(' ')
-                    for word in processed_word:
-                        if word not in STOP_WORDS:
-                            stem_word = nltk_test.stem(word)
-                            self.record_frequency(id,stem_word)
-
-                elif '|' in new_word:
+                if '|' in new_word:
                     split_word = new_word.split('|')
                     self.id_to_links_dict[id].add(split_word[0])
-                    processed_word = split_word[1].split(' ')
+                    processed_word = [x for x in \
+                        re.findall(n_regex, split_word[1].strip()) \
+                            if x != "" or x != "\n" or x !=" "]
+                    
                     for word in processed_word:
                         if word not in STOP_WORDS:
                             stem_word = nltk_test.stem(word)
                             self.record_frequency(id,stem_word)
-
                 else:
                     self.id_to_links_dict[id].add(new_word)
-                    processed_word = new_word.split(' ')
+                    processed_word = [x for x in \
+                        re.findall(n_regex, new_word.strip()) \
+                            if x != "" or x != "\n" or x !=" "]
+
                     for word in processed_word:
                         if word not in STOP_WORDS:
                             stem_word = nltk_test.stem(word)
@@ -140,9 +210,18 @@ class Indexer:
                 if words not in STOP_WORDS:
                     self.record_frequency(id,nltk_test.stem(words))
 
-        
+    def record_frequency(self,id,word) -> None:
+        '''
+        Records frequency of the term and populates word_to_id_frequency_dict.
+        It also records the max frequency for each document.
 
-    def record_frequency(self,id,word):
+        Parameters:
+        id - id of a document
+        word - term
+
+        Returns: 
+        None
+        '''
         if word in self.word_to_id_frequency_dict.keys():
             if id in self.word_to_id_frequency_dict[word].keys():
                 self.word_to_id_frequency_dict[word][id] += 1
@@ -154,86 +233,114 @@ class Indexer:
         
         # id to frequency of most frequently occurring word on page
         if id in self.id_to_max_freq:
-            if self.word_to_id_frequency_dict[word][id] > self.id_to_max_freq[id]:
-                self.id_to_max_freq[id] = self.word_to_id_frequency_dict[word][id]
+            if self.word_to_id_frequency_dict[word][id] > \
+                self.id_to_max_freq[id]:
+                self.id_to_max_freq[id] = \
+                    self.word_to_id_frequency_dict[word][id]
         else:
             self.id_to_max_freq[id] = self.word_to_id_frequency_dict[word][id]
 
+    def term_frequency(self) -> None:
+        '''
+        Calculates term frequency
 
-    # def add_link(self,id,word):
-    #     if id in self.id_to_links_dict.keys():
-    #         self.id_to_links_dict[id].add(word)
-    #     else:
-    #         self.id_to_links_dict[id] = set(word)
+        Parameters:
+        None
 
-    def term_frequency(self):
+        Returns: 
+        None
+        '''
         for word in self.word_to_id_frequency_dict.keys():
             for id in self.term_frequency_dict[word].keys():
-                self.term_frequency_dict[word][id] = self.term_frequency_dict[word][id]/self.id_to_max_freq[id]
+                self.term_frequency_dict[word][id] = \
+                    self.term_frequency_dict[word][id]/self.id_to_max_freq[id]
 
-    def inverse_doc_frequency(self):
+    def inverse_doc_frequency(self) -> None:
+        '''
+        Calculates inverse doc frequency
+
+        Parameters:
+        None
+
+        Returns: 
+        None
+        '''
         n = len(self.id_to_title_dict.keys())
         for word in self.word_to_id_frequency_dict.keys():
             num_docs = len(self.word_to_id_frequency_dict.get(word).keys())
             idf = log(n/num_docs)
             self.word_to_inv_freq[word] = idf
     
-    def word_to_id_rel_helper(self,word):
+    def word_to_id_rel_helper(self,word) -> None:
+        '''
+        Populates id_to_rel dictionary, which will be used to populate
+        word_to_id_rel_dict
+
+        Parameters:
+        word - a term
+
+        Returns: 
+        None
+        '''
         id_to_rel = {}
         for id in self.term_frequency_dict.get(word).keys():
-            id_to_rel[id] = self.term_frequency_dict.get(word).get(id) * self.word_to_inv_freq.get(word)
+            id_to_rel[id] = \
+                self.term_frequency_dict.get(word).get(id) * \
+                    self.word_to_inv_freq.get(word)
         return id_to_rel
 
-    def word_to_id_rel(self):
+    def word_to_id_rel(self) -> None:
+        '''
+        Populates word_to_id_rel_dict
+
+        Parameters:
+        None
+
+        Returns: 
+        None
+        '''
         for word in self.word_to_id_frequency_dict.keys():
-            # if word != "" and word != " " and word != "\n":
-            # print("fdkfmdkffd")
             self.word_to_id_to_rel_dict[word] = self.word_to_id_rel_helper(word)
     
 
-    def parsing(self):
-        root = et.parse(self.xml).getroot()
-        #page = root.findall("page")
+    def parsing(self) -> None:
+        '''
+        Parses the XML file(processing of documents into essential terms)
+
+        Parameters:
+        None
+
+        Returns: 
+        None
+        '''
+        root: Element = et.parse(self.xml).getroot()
         for page in root.findall("page"):
             # populating self.id_to_title_dict
             self.id_to_title(page)
             self.title_to_id(page)
-
-            #print(f"progress {i}/ {len(page)}")
-
         self.id_to_links()
         for page in root.findall("page"):
             # tokenization
             title = page.find('title').text.strip()
             text = page.find('text').text.strip() 
-            #id = int(float(page.find('id').text.strip()))
-            id = int(page.find('id').text.strip())
+            id = int(float(page.find('id').text.strip()))
             self.tokenization(title + ' ' + text, id)
-
-        print('id_to_links_dict before')
-        print(self.id_to_links_dict)
-
         self.id_to_links_processing()
-        # print('word_to_id_frequency_dict')
-        # print(self.word_to_id_frequency_dict)
         self.term_frequency_dict = self.word_to_id_frequency_dict.copy()
         self.term_frequency()
-        # print('self.term_frequency_dict')
-        # print(self.term_frequency_dict)
         self.inverse_doc_frequency()
-        # print('word_to_inv_freq')
-        # print(self.word_to_inv_freq)
         self.word_to_id_rel()
-        # print('word_to_id_rel')
-        # print(self.word_to_id_to_rel_dict)
-        # print('id_to_links_dict after')
-        # print(self.id_to_links_dict)
-        print('word to id to rel')
-        print(self.word_to_id_to_rel_dict)
-    
-    ###########
 
-    def pageRank(self):
+    def pageRank(self) -> None:
+        '''
+        Calculates pagerank for each document
+
+        Parameters:
+        None
+
+        Returns: 
+        None
+        '''
         delta = 0.001 
         rPrev = {}
         n = len(self.id_to_title_dict.keys())
@@ -246,162 +353,63 @@ class Indexer:
             for j in self.id_to_title_dict.keys():
                 self.id_to_page_ranks_dict[j] = 0
                 for k in self.id_to_title_dict.keys():
-                    self.id_to_page_ranks_dict[j] = self.id_to_page_ranks_dict[j] + self.id_to_weights_dict[k,j] * rPrev[k]
-        print('id_to_page_ranks')
-        print(self.id_to_page_ranks_dict)
+                    self.id_to_page_ranks_dict[j] = \
+                        self.id_to_page_ranks_dict[j] + \
+                            self.id_to_weights_dict[k,j] * rPrev[k]
 
+    def rDistance(self,rPrev,rCurr) -> Number:
+        '''
+        Determines the distance between two iterations
 
-    def rDistance(self,rPrev,rCurr):
+        Parameters:
+        rPrev - previous page ranking
+        rCurr - current page ranking
+
+        Returns: 
+        A number(distance) 
+        '''
         sum = 0
         for key in rCurr.keys():
             sum = sum + (rCurr[key] - rPrev[key])**2
         return math.sqrt(sum)
 
-    def calculate_weight(self):
+    def calculate_weight(self) -> None:
+        '''
+        Calculates weights of the links
+
+        Parameters:
+        None
+
+        Returns: 
+        None
+        '''
         EPS = 0.15
         for k in self.id_to_title_dict.keys():
             for j in self.id_to_title_dict.keys():
                 if self.id_to_title_dict[j] in self.id_to_links_dict[k]:
-                    self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict.keys()) + (1-EPS)/(len(self.id_to_links_dict[k]))
+                    self.id_to_weights_dict[k,j] = \
+                        EPS/len(self.id_to_title_dict.keys()) + \
+                            (1-EPS)/(len(self.id_to_links_dict[k]))
                 else:
-                    self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict)
-
-    # Solution that works
-    # def calculate_weight(self):
-    #     for k in self.id_to_title_dict.keys():
-    #         for j in self.id_to_title_dict.keys():
-    #             if self.id_to_title_dict[j] in self.id_to_links_dict[k] and k != j:
-    #                 self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict.keys()) + (1-EPS)/(len(self.id_to_links_dict[k]))
-    #             else:
-    #                 if k != j and len(self.id_to_links_dict[k]) == 0:
-    #                     self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict.keys()) + (1-EPS)/(len(self.id_to_title_dict) - 1)
-    #                 else:
-    #                     self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict)
-
-    
-
-    # TA suggestion
-    # def calculate_weight(self):
-    #     for k in self.id_to_title_dict.keys():
-    #         for j in self.id_to_title_dict.keys():
-    #             if k == j:
-    #                 self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict)
-    #                 #self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict.keys()) + (1-EPS)/(len(self.id_to_title_dict) - 1)
-
-    #             elif k in self.id_to_links_dict and j in self.id_to_links_dict[k]:
-    #                 self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict.keys()) + (1-EPS)/(len(self.id_to_links_dict[k]))
-    #             elif len(self.id_to_links_dict[k]) == 0:
-    #                 print('HERE')
-    #                 print(k)
-    #                 self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict.keys()) + (1-EPS)/(len(self.id_to_title_dict) - 1)
-    #             else:
-    #                 self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict)
-    #         print('id to weightd')
-    #         print(self.id_to_weights_dict)
-
-
-                # if self.id_to_title_dict[j] in self.id_to_links_dict[k] and k != j:
-                #     self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict.keys()) + (1-EPS)/(len(self.id_to_links_dict[k]))
-                # else:
-                #     if k != j and len(self.id_to_links_dict[k]) == 0:
-                #         self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict.keys()) + (1-EPS)/(len(self.id_to_title_dict) - 1)
-                #     else:
-                #         self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict)
-        
-        # print('id_to_weights_dict')
-        # print(self.id_to_weights_dict)
-
-    # PREVIOUS WEIGHTS
-    # def calculate_weight(self):
-    #     for k in self.id_to_title_dict.keys():
-    #         for j in self.id_to_title_dict.keys():
-    #             if self.id_to_title_dict[j] in self.id_to_links_dict[k] and k != j:
-    #                 self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict.keys()) + (1-EPS)/(len(self.id_to_links_dict[k]))
-    #             else:
-    #                 if k != j and len(self.id_to_links_dict[k]) == 0:
-    #                     self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict.keys()) + (1-EPS)/(len(self.id_to_title_dict) - 1)
-    #                 else:
-    #                     self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict)
-
-    # def calculate_weight(self):
-    #     print('self.id_to_links_dict')
-    #     print(self.id_to_links_dict)
-    #     for k in self.id_to_title_dict.keys():
-    #         for j in self.id_to_title_dict.keys():
-    #             if self.id_to_title_dict[k] in self.id_to_links_dict[j]:
-    #                 if len(self.id_to_links_dict[k]) == 0:
-    #                     self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict.keys()) + (1-EPS)/(len(self.id_to_links_dict) - 1)
-    #                 else:
-    #                     self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict.keys()) + (1-EPS)/len(self.id_to_links_dict[k])
-    #             else:
-    #                 if len(self.id_to_links_dict[k]) == 0:
-    #                     self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict.keys()) + (1-EPS)/(len(self.id_to_links_dict) - 1)
-    #                 else:
-    #                     self.id_to_weights_dict[k,j] = EPS/len(self.id_to_title_dict.keys())
-    #     print('id_to_weights_dict')
-    #     print(self.id_to_weights_dict)
-
-    # def hasLink(self,k):
-    #     self.id_to_links_dict
-    #     self.title_to_id_dict
-    #     return self.id_to_title_dict[k] in 
-
-######
-
-# def pageRanker(page_dict):
-#     pages = list (page_dict.keys())
-#     EPS = 0.15
-#     n = len(pages)
-#     rankingPrev = [0] * n
-#     rankingCurr = [1/n] * n
-#     while eDistance(rankingPrev, rankingCurr) > EPS:
-#         rankingCurr = rankingPrev
-#         for j in len(pages):
-#             rankingCurr[j] = 0
-#             for k in pages:
-#                 rankingCurr[j] = rankingCurr[j] + weightPage(j, k) * rankingPrev[k]
-
-# def eDistance(rp, rc):
-#     termSquares = [0] * len(rp)
-#     for i in range(len(rp)):
-#         termSquares.append((rc[i] - rp[i])^2)
-#     return math.sqrt(sum(termSquares))
-    
-
-# def weightPage(k, j, pages):
-#     weight = 0
-#     EPS = 0.15
-#     nk = pagesContaining(pages)
-#     if doesLink(k, j):
-#         weight = (EPS / len(pages)) + (1 - EPS)(1/nk)
-#     else: 
-#         weight = (EPS / len(pages))
-#     return weight
-        
-
-# def doesLink(k, j, id_l_dict) -> bool:
-#     dl = False
-#     for id in id_l_dict[k]:
-#         if id == j:
-#             dl = True
-#     return dl
-
-# def pagesContaining(pages, j):
-#     nk = 0
-#     for page in pages:
-#         if doesLink(page, j):
-#             nk += 1
-#     return nk
-
-
+                    self.id_to_weights_dict[k,j] = \
+                        EPS/len(self.id_to_title_dict)
 
 
 if __name__ == "__main__":
+    '''
+        Main method of Indexer class. If user passes less or more than 3 input 
+        words, prints out the informative message
+
+        Parameters:
+        None
+
+        Returns: 
+        None
+        '''
     xml_filepath = sys.argv[1]
     titles_filepath = sys.argv[2]
     docs_filepath = sys.argv[3]
     words_filepath = sys.argv[4]
-    print(len(sys.argv))
     if len(sys.argv)-1 != 4:
         print("Try passing in 3 arguments")
     Indexer(xml_filepath,titles_filepath,docs_filepath,words_filepath)
